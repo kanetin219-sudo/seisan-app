@@ -351,11 +351,17 @@
   <div class="card">
     <div class="card-title">📝 今月の売上を報告する</div>
 
-    <div class="form-group">
+    <!-- 管理者モード：ドロップダウン -->
+    <div id="report-client-select-wrap" class="form-group">
       <label class="form-label">顧問生名</label>
       <select id="report-client" class="form-input" onchange="onClientChange()">
         <option value="">-- 選択してください --</option>
       </select>
+    </div>
+    <!-- 顧問生モード：固定名表示 -->
+    <div id="report-client-fixed" style="display:none;margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:600;color:var(--text-muted);margin-bottom:4px;">顧問生名</div>
+      <div id="report-client-fixed-name" style="font-size:18px;font-weight:800;color:var(--primary);padding:10px 12px;background:var(--primary-light);border-radius:8px;"></div>
     </div>
 
     <div class="form-row">
@@ -595,6 +601,7 @@ let editingClientId = null;
 let confirmReportId = null;
 let editReportId = null;
 let editClientData = null;
+let clientMode = null; // 顧問生モード時は顧問生オブジェクト
 
 // ========== 初期化 ==========
 async function init() {
@@ -613,7 +620,47 @@ async function init() {
   document.getElementById('seisan-month').value = m;
 
   await loadClients();
-  loadSeisan();
+
+  // URLパラメータで顧問生モード判定
+  const params = new URLSearchParams(window.location.search);
+  const cId = params.get('c');
+  if (cId) {
+    enterClientMode(cId);
+  } else {
+    loadSeisan();
+  }
+}
+
+// ========== 顧問生モード ==========
+function enterClientMode(clientId) {
+  const c = clients.find(x => x.id === clientId && x.active);
+  if (!c) {
+    document.body.innerHTML = `
+      <div style="font-family:-apple-system,sans-serif;text-align:center;padding:80px 20px;color:#64748b;">
+        <div style="font-size:48px;margin-bottom:16px;">🔗</div>
+        <h2 style="font-size:18px;margin-bottom:8px;color:#1e293b;">URLが無効です</h2>
+        <p style="font-size:14px;">このURLは存在しないか、無効になっています。<br>管理者にお問い合わせください。</p>
+      </div>`;
+    return;
+  }
+  clientMode = c;
+
+  // ヘッダー変更
+  document.querySelector('header h1').textContent = `💰 ${c.name} 精算シート`;
+
+  // タブを売上報告のみに（精算一覧・設定タブを隠す）
+  const tabs = document.querySelectorAll('.tab');
+  tabs[1].style.display = 'none';
+  tabs[2].style.display = 'none';
+
+  // 名前ドロップダウンを隠して固定名を表示
+  document.getElementById('report-client-select-wrap').style.display = 'none';
+  document.getElementById('report-client-fixed').style.display = 'block';
+  document.getElementById('report-client-fixed-name').textContent = c.name;
+
+  // プレビュー再計算と履歴読み込み
+  calcPreview();
+  loadHistory(c.id);
 }
 
 // ========== ユーティリティ ==========
@@ -676,6 +723,7 @@ function onClientChange() {
 }
 
 function getSelectedClient() {
+  if (clientMode) return clientMode;
   const id = document.getElementById('report-client').value;
   return clients.find(c => c.id === id) || null;
 }
@@ -947,6 +995,7 @@ function renderClientSettings() {
     el.innerHTML = `<div class="empty-state"><div class="icon">👥</div><p>顧問生が登録されていません</p></div>`;
     return;
   }
+  const base = window.location.href.split('?')[0];
   el.innerHTML = clients.map(c => `
     <div class="client-setting-item">
       <div class="client-info">
@@ -959,10 +1008,21 @@ function renderClientSettings() {
         </div>
       </div>
       <div class="client-actions">
+        <button class="btn btn-ghost btn-sm" onclick="copyClientURL('${c.id}', '${esc(c.name)}')">🔗 URL</button>
         <button class="btn btn-ghost btn-sm" onclick="openClientModal('${c.id}')">編集</button>
       </div>
     </div>
   `).join('');
+}
+
+function copyClientURL(clientId, name) {
+  const base = window.location.href.split('?')[0];
+  const url = `${base}?c=${clientId}`;
+  navigator.clipboard.writeText(url).then(() => {
+    showToast(`✅ ${name} の個別URLをコピーしました`);
+  }).catch(() => {
+    prompt(`${name} の個別URLをコピーしてください：`, url);
+  });
 }
 
 function openClientModal(clientId) {
