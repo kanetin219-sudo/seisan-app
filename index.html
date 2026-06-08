@@ -388,10 +388,23 @@
       </div>
     </div>
 
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">単価（円）</label>
+        <input type="number" id="report-unit-price" class="form-input" placeholder="例：100000"
+          oninput="onUnitInput()" min="0" step="1000">
+      </div>
+      <div class="form-group">
+        <label class="form-label">人数（人）</label>
+        <input type="number" id="report-unit-count" class="form-input" placeholder="例：10"
+          oninput="onUnitInput()" min="0" step="1">
+      </div>
+    </div>
+
     <div class="form-group">
-      <label class="form-label">今月の売上（円）</label>
+      <label class="form-label">今月の売上（円）<span style="font-size:11px;color:var(--text-muted);margin-left:6px;">※ 単価×人数で自動入力、手動変更も可</span></label>
       <input type="number" id="report-revenue" class="form-input" placeholder="例：1000000"
-        oninput="calcPreview()" min="0" step="1000">
+        oninput="calcPreview()" min="0" step="1000" style="font-size:17px;font-weight:700;">
     </div>
 
     <div id="fee-preview" style="display:none;" class="fee-breakdown">
@@ -572,8 +585,18 @@
       <span id="modal-edit-title">売上を修正</span>
       <button class="modal-close" onclick="closeEditModal()">×</button>
     </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">単価（円）</label>
+        <input type="number" id="edit-unit-price" class="form-input" min="0" step="1000" oninput="onEditUnitInput()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">人数（人）</label>
+        <input type="number" id="edit-unit-count" class="form-input" min="0" step="1" oninput="onEditUnitInput()">
+      </div>
+    </div>
     <div class="form-group">
-      <label class="form-label">売上（円）</label>
+      <label class="form-label">売上（円）<span style="font-size:11px;color:var(--text-muted);margin-left:6px;">※ 単価×人数で自動入力</span></label>
       <input type="number" id="edit-revenue" class="form-input" min="0" step="1000">
     </div>
     <div class="form-group">
@@ -728,6 +751,15 @@ function getSelectedClient() {
   return clients.find(c => c.id === id) || null;
 }
 
+function onUnitInput() {
+  const price = parseInt(document.getElementById('report-unit-price').value) || 0;
+  const count = parseInt(document.getElementById('report-unit-count').value) || 0;
+  if (price > 0 && count > 0) {
+    document.getElementById('report-revenue').value = price * count;
+  }
+  calcPreview();
+}
+
 function calcPreview() {
   const c = getSelectedClient();
   const revenue = parseInt(document.getElementById('report-revenue').value) || 0;
@@ -775,9 +807,13 @@ async function submitReport() {
   const commission = Math.floor(revenue * c.commission_rate / 100);
   const calculated_fee = c.fixed_fee + commission;
 
+  const unit_price = parseInt(document.getElementById('report-unit-price').value) || 0;
+  const unit_count = parseInt(document.getElementById('report-unit-count').value) || 0;
+
   const payload = {
     client_id: c.id,
     year, month, revenue,
+    unit_price, unit_count,
     fixed_fee: c.fixed_fee,
     commission_rate: c.commission_rate,
     calculated_fee,
@@ -822,6 +858,8 @@ async function loadHistory(clientId) {
         </span>
       </div>
       <div class="history-body">
+        ${r.unit_price ? `<span class="history-field">単価：<span>${fmt(r.unit_price)}</span></span>` : ''}
+        ${r.unit_count ? `<span class="history-field">人数：<span>${r.unit_count}人</span></span>` : ''}
         <span class="history-field">売上：<span>${fmt(r.revenue)}</span></span>
         <span class="history-field">固定：<span>${fmt(r.fixed_fee)}</span></span>
         <span class="history-field">歩合：<span>${fmt(r.calculated_fee - r.fixed_fee)}</span></span>
@@ -909,7 +947,7 @@ async function loadSeisan() {
       </td>
       <td style="white-space:nowrap;">
         ${r.status !== 'confirmed' ? `<button class="btn btn-success btn-sm" onclick="openConfirmModal('${r.id}', '${esc(c.name)}', ${r.calculated_fee})">確認</button>` : ''}
-        <button class="btn btn-ghost btn-sm" onclick="openEditModal('${r.id}', '${esc(c.name)}', ${r.revenue}, '${esc(r.admin_note || '')}', ${r.fixed_fee}, ${r.commission_rate})">修正</button>
+        <button class="btn btn-ghost btn-sm" onclick="openEditModal('${r.id}', '${esc(c.name)}', ${r.revenue}, '${esc(r.admin_note || '')}', ${r.fixed_fee}, ${r.commission_rate}, ${r.unit_price || 0}, ${r.unit_count || 0})">修正</button>
       </td>
     </tr>`;
   }).join('');
@@ -960,13 +998,22 @@ async function confirmReport() {
 }
 
 // ===== 修正モーダル =====
-function openEditModal(reportId, name, revenue, note, fixedFee, rate) {
+function openEditModal(reportId, name, revenue, note, fixedFee, rate, unitPrice, unitCount) {
   editReportId = reportId;
   editClientData = { fixedFee, rate };
   document.getElementById('modal-edit-title').textContent = `${name} の売上を修正`;
+  document.getElementById('edit-unit-price').value = unitPrice || '';
+  document.getElementById('edit-unit-count').value = unitCount || '';
   document.getElementById('edit-revenue').value = revenue;
   document.getElementById('edit-note').value = note;
   document.getElementById('modal-edit').classList.add('open');
+}
+function onEditUnitInput() {
+  const price = parseInt(document.getElementById('edit-unit-price').value) || 0;
+  const count = parseInt(document.getElementById('edit-unit-count').value) || 0;
+  if (price > 0 && count > 0) {
+    document.getElementById('edit-revenue').value = price * count;
+  }
 }
 function closeEditModal() {
   document.getElementById('modal-edit').classList.remove('open');
@@ -976,11 +1023,13 @@ async function saveEdit() {
   if (!editReportId) return;
   const revenue = parseInt(document.getElementById('edit-revenue').value);
   if (isNaN(revenue) || revenue < 0) { showToast('売上を入力してください'); return; }
+  const unit_price = parseInt(document.getElementById('edit-unit-price').value) || 0;
+  const unit_count = parseInt(document.getElementById('edit-unit-count').value) || 0;
   const note = document.getElementById('edit-note').value;
   const commission = Math.floor(revenue * editClientData.rate / 100);
   const calculated_fee = editClientData.fixedFee + commission;
   const { error } = await sb.from('seisan_reports')
-    .update({ revenue, calculated_fee, admin_note: note, status: 'pending', updated_at: new Date().toISOString() })
+    .update({ revenue, unit_price, unit_count, calculated_fee, admin_note: note, status: 'pending', updated_at: new Date().toISOString() })
     .eq('id', editReportId);
   if (error) { showToast('保存に失敗しました'); return; }
   showToast('✅ 修正しました');
