@@ -407,6 +407,19 @@
         oninput="calcPreview()" min="0" step="1000" style="font-size:17px;font-weight:700;">
     </div>
 
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">着金金額（円）</label>
+        <input type="number" id="report-chakkin-amount" class="form-input" placeholder="例：800000"
+          min="0" step="1000">
+      </div>
+      <div class="form-group">
+        <label class="form-label">着金人数（人）</label>
+        <input type="number" id="report-chakkin-count" class="form-input" placeholder="例：8"
+          min="0" step="1">
+      </div>
+    </div>
+
     <div id="fee-preview" style="display:none;" class="fee-breakdown">
       <div class="fee-breakdown-title">💴 顧問料の内訳（プレビュー）</div>
       <div class="fee-row">
@@ -493,6 +506,8 @@
           <tr>
             <th>顧問生名</th>
             <th class="num">売上</th>
+            <th class="num">着金金額</th>
+            <th class="num">着金人数</th>
             <th class="num">固定料金</th>
             <th class="num">成果報酬</th>
             <th class="num">顧問料合計</th>
@@ -598,6 +613,16 @@
     <div class="form-group">
       <label class="form-label">売上（円）<span style="font-size:11px;color:var(--text-muted);margin-left:6px;">※ 単価×人数で自動入力</span></label>
       <input type="number" id="edit-revenue" class="form-input" min="0" step="1000">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">着金金額（円）</label>
+        <input type="number" id="edit-chakkin-amount" class="form-input" min="0" step="1000">
+      </div>
+      <div class="form-group">
+        <label class="form-label">着金人数（人）</label>
+        <input type="number" id="edit-chakkin-count" class="form-input" min="0" step="1">
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label">管理者メモ</label>
@@ -809,11 +834,14 @@ async function submitReport() {
 
   const unit_price = parseInt(document.getElementById('report-unit-price').value) || 0;
   const unit_count = parseInt(document.getElementById('report-unit-count').value) || 0;
+  const chakkin_amount = parseInt(document.getElementById('report-chakkin-amount').value) || 0;
+  const chakkin_count = parseInt(document.getElementById('report-chakkin-count').value) || 0;
 
   const payload = {
     client_id: c.id,
     year, month, revenue,
     unit_price, unit_count,
+    chakkin_amount, chakkin_count,
     fixed_fee: c.fixed_fee,
     commission_rate: c.commission_rate,
     calculated_fee,
@@ -861,6 +889,8 @@ async function loadHistory(clientId) {
         ${r.unit_price ? `<span class="history-field">単価：<span>${fmt(r.unit_price)}</span></span>` : ''}
         ${r.unit_count ? `<span class="history-field">人数：<span>${r.unit_count}人</span></span>` : ''}
         <span class="history-field">売上：<span>${fmt(r.revenue)}</span></span>
+        ${r.chakkin_amount ? `<span class="history-field">着金金額：<span style="color:var(--success);">${fmt(r.chakkin_amount)}</span></span>` : ''}
+        ${r.chakkin_count ? `<span class="history-field">着金人数：<span style="color:var(--success);">${r.chakkin_count}人</span></span>` : ''}
         <span class="history-field">固定：<span>${fmt(r.fixed_fee)}</span></span>
         <span class="history-field">歩合：<span>${fmt(r.calculated_fee - r.fixed_fee)}</span></span>
         <span class="history-field">顧問料：<span style="color:var(--primary);font-size:15px;">${fmt(r.calculated_fee)}</span></span>
@@ -923,6 +953,8 @@ async function loadSeisan() {
       <tr class="not-reported">
         <td><strong>${esc(c.name)}</strong></td>
         <td class="num text-muted">—</td>
+        <td class="num text-muted">—</td>
+        <td class="num text-muted">—</td>
         <td class="num">${fmt(c.fixed_fee)}</td>
         <td class="num text-muted">—</td>
         <td class="num text-muted">—</td>
@@ -936,6 +968,8 @@ async function loadSeisan() {
     <tr>
       <td><strong>${esc(c.name)}</strong></td>
       <td class="num">${fmt(r.revenue)}</td>
+      <td class="num" style="color:var(--success);font-weight:600;">${r.chakkin_amount ? fmt(r.chakkin_amount) : '<span style="color:var(--text-muted);">—</span>'}</td>
+      <td class="num" style="color:var(--success);font-weight:600;">${r.chakkin_count ? r.chakkin_count + '人' : '<span style="color:var(--text-muted);">—</span>'}</td>
       <td class="num">${fmt(r.fixed_fee)}</td>
       <td class="num">${fmt(commission)}<span style="font-size:10px;color:var(--text-muted);"> (${r.commission_rate}%)</span></td>
       <td class="num" style="font-weight:700;color:var(--primary);">${fmt(r.calculated_fee)}</td>
@@ -947,7 +981,7 @@ async function loadSeisan() {
       </td>
       <td style="white-space:nowrap;">
         ${r.status !== 'confirmed' ? `<button class="btn btn-success btn-sm" onclick="openConfirmModal('${r.id}', '${esc(c.name)}', ${r.calculated_fee})">確認</button>` : ''}
-        <button class="btn btn-ghost btn-sm" onclick="openEditModal('${r.id}', '${esc(c.name)}', ${r.revenue}, '${esc(r.admin_note || '')}', ${r.fixed_fee}, ${r.commission_rate}, ${r.unit_price || 0}, ${r.unit_count || 0})">修正</button>
+        <button class="btn btn-ghost btn-sm" onclick="openEditModal('${r.id}', '${esc(c.name)}', ${r.revenue}, '${esc(r.admin_note || '')}', ${r.fixed_fee}, ${r.commission_rate}, ${r.unit_price || 0}, ${r.unit_count || 0}, ${r.chakkin_amount || 0}, ${r.chakkin_count || 0})">修正</button>
       </td>
     </tr>`;
   }).join('');
@@ -998,13 +1032,15 @@ async function confirmReport() {
 }
 
 // ===== 修正モーダル =====
-function openEditModal(reportId, name, revenue, note, fixedFee, rate, unitPrice, unitCount) {
+function openEditModal(reportId, name, revenue, note, fixedFee, rate, unitPrice, unitCount, chakkinAmount, chakkinCount) {
   editReportId = reportId;
   editClientData = { fixedFee, rate };
   document.getElementById('modal-edit-title').textContent = `${name} の売上を修正`;
   document.getElementById('edit-unit-price').value = unitPrice || '';
   document.getElementById('edit-unit-count').value = unitCount || '';
   document.getElementById('edit-revenue').value = revenue;
+  document.getElementById('edit-chakkin-amount').value = chakkinAmount || '';
+  document.getElementById('edit-chakkin-count').value = chakkinCount || '';
   document.getElementById('edit-note').value = note;
   document.getElementById('modal-edit').classList.add('open');
 }
@@ -1025,11 +1061,13 @@ async function saveEdit() {
   if (isNaN(revenue) || revenue < 0) { showToast('売上を入力してください'); return; }
   const unit_price = parseInt(document.getElementById('edit-unit-price').value) || 0;
   const unit_count = parseInt(document.getElementById('edit-unit-count').value) || 0;
+  const chakkin_amount = parseInt(document.getElementById('edit-chakkin-amount').value) || 0;
+  const chakkin_count = parseInt(document.getElementById('edit-chakkin-count').value) || 0;
   const note = document.getElementById('edit-note').value;
   const commission = Math.floor(revenue * editClientData.rate / 100);
   const calculated_fee = editClientData.fixedFee + commission;
   const { error } = await sb.from('seisan_reports')
-    .update({ revenue, unit_price, unit_count, calculated_fee, admin_note: note, status: 'pending', updated_at: new Date().toISOString() })
+    .update({ revenue, unit_price, unit_count, chakkin_amount, chakkin_count, calculated_fee, admin_note: note, status: 'pending', updated_at: new Date().toISOString() })
     .eq('id', editReportId);
   if (error) { showToast('保存に失敗しました'); return; }
   showToast('✅ 修正しました');
