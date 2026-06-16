@@ -797,16 +797,16 @@ function onUnitInput() {
 
 function calcPreview() {
   const c = getSelectedClient();
-  const revenue = parseInt(document.getElementById('report-revenue').value) || 0;
+  const chakkin_amount = parseInt(document.getElementById('report-chakkin-amount').value) || 0;
   const preview = document.getElementById('fee-preview');
 
   if (!c) { preview.style.display = 'none'; return; }
 
-  const commission = Math.floor(revenue * c.commission_rate / 100);
+  const commission = Math.floor(chakkin_amount * 0.1);
   const total = c.fixed_fee + commission;
 
   document.getElementById('preview-fixed').textContent = fmt(c.fixed_fee);
-  document.getElementById('preview-rate-label').textContent = `（売上の${c.commission_rate}%）`;
+  document.getElementById('preview-rate-label').textContent = `（着金の10%）`;
   document.getElementById('preview-commission').textContent = fmt(commission);
   document.getElementById('preview-total').textContent = fmt(total);
   preview.style.display = 'block';
@@ -839,12 +839,12 @@ async function submitReport() {
 
   const year = parseInt(document.getElementById('report-year').value);
   const month = parseInt(document.getElementById('report-month').value);
-  const commission = Math.floor(revenue * c.commission_rate / 100);
+  const chakkin_amount = parseInt(document.getElementById('report-chakkin-amount').value) || 0;
+  const commission = Math.floor(chakkin_amount * 0.1);
   const calculated_fee = c.fixed_fee + commission;
 
   const unit_price = parseInt(document.getElementById('report-unit-price').value) || 0;
   const unit_count = parseInt(document.getElementById('report-unit-count').value) || 0;
-  const chakkin_amount = parseInt(document.getElementById('report-chakkin-amount').value) || 0;
   const chakkin_count = parseInt(document.getElementById('report-chakkin-count').value) || 0;
 
   const payload = {
